@@ -22,7 +22,7 @@
 \maketitle
 
 \begin{abstract}
-A solo developer of an open-world soulslike game plays each new build and writes a list of notes. We ask whether a language-model agent can predict that list from the todo the build was made from, and then change the todo so the list comes back empty. We frame both as learning with no weight updates. The ``weights'' are one plain-text memory file, the data are sixteen git-tagged pairs of todo and playtest list, and every epoch is run by a fresh agent, so the file is the only thing carried forward. The \emph{First Rite} trains the memory on past pairs; the \emph{Second Rite} freezes it and optimises the todo against it, as one would optimise an input against a frozen network. On the training pairs, accuracy rose from 5.5\% to 21.1\% of notes caught over four epochs. But a fixed scorer found that most of the gain was recall: the memory had stored the labels. With recall removed the curve was flat from epoch~2, and a held-out track converged near 3\%. Reading the raw earlier lists predicted held-out notes five times better than any distilled rule set. A memory rewritten as general do/don't pairs, with no past notes in it, caught 5.7\% with zero recall, and its misses point to a line budget, not missing knowledge. We report the protocol, the leaks we found, and what transfers.
+A solo developer of an open-world soulslike game plays each new build and writes a list of notes. We ask whether a language-model agent can predict that list from the todo the build was made from, and then change the todo so the list comes back empty. We frame both as learning with no weight updates. The ``weights'' are one plain-text memory file, the data are sixteen git-tagged pairs of todo and playtest list, and every epoch is run by a fresh agent, so the file is the only thing carried forward. The \emph{First Rite} trains the memory on past pairs; the \emph{Second Rite} freezes it and optimises the todo against it, as one would optimise an input against a frozen network. On the training pairs, accuracy rose from 5.5\% to 21.1\% of notes caught over four epochs. But a fixed scorer found that most of the gain was recall: the memory had stored the labels. With recall removed the curve was flat from epoch~2, and a held-out track converged near 3\%. Reading the raw earlier lists predicted held-out notes five times better than any distilled rule set. A memory rewritten as general do/don't pairs, with no past notes in it, caught 5.7\% with zero recall, and its misses point to a line budget, not missing knowledge. Against a baseline with no memory, that is 2.5 times as many held-out notes; against a baseline that only reads the raw history, it is 2.9 times fewer. The Second Rite cut the forecast issues left in the todo from 176 to 32 over five rounds (82\% fewer, and 94\% fewer on its own fixes), though only a real playtest can say whether the real list shrinks too. We report the protocol, the leaks we found, and what transfers.
 \end{abstract}
 
 \section{Introduction}
@@ -168,6 +168,15 @@ An early lenient rubric also gave half credit for ``the right kind of problem in
 
 \paragraph{Validation converged low.} The validation track, which never saw lists 14--16, caught 4, 5 and 6 of their 191 notes over three epochs. That's within noise of each other, and flat.
 
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\linewidth]{figures/rite1-baselines.png}
+  \caption{The First Rite against two baselines that don't use it, on the 191 notes of held-out pairs 14--16. Grey: no memory and no past lists; every earlier list raw with no memory. Blue: the rules memory trained by the First Rite; the do/don't memory with the last three lists.}
+  \label{fig:rite1}
+\end{figure}
+
+\paragraph{Against the baselines.} Figure~\ref{fig:rite1} sets the First Rite against two baselines that don't use it. With no memory and no past lists, a forecaster caught 4 of the 191 held-out notes (2.1\%). The First Rite's trained rules caught 6 (3.1\%), 1.5 times that baseline, a 50\% gain. The label-free do/don't memory with the last three lists caught 10 (5.2\%), 2.5 times the baseline, a 150\% gain. The second baseline, every earlier list raw with no memory at all, caught 29 (15.2\%), 7.2 times the first baseline and 2.9 times the do/don't memory. So the First Rite beats having nothing, but not reading the history. The combination the memory now prescribes, its do/don't rules plus every earlier list and no line cap, is untested. The next playtest scores it.
+
 \paragraph{Raw history beats distilled rules.} An agent with no rules memory but with every earlier list in context caught 29 of the same 191 held-out notes: five times the validation track. The notes that come are mostly repeats of named things, half-finished asks, and the next step of a wish. Those live in the raw lists. A rule about them (``fixes checked only by a test come back'') doesn't say which thing will come back.
 
 \paragraph{A label-free memory.} The memory was rewritten in general terms as contrastive do/don't pairs, each rule stated with its opposite, and with no past notes in it. Frozen and tested by a fresh agent with the last three lists in context, it caught 32 of 564 notes with zero recall, and 10 of 191 on pairs 14--16, twice the validation track's best. Its 520 misses split three ways:
@@ -188,7 +197,16 @@ The cap was the largest loss, and the developer's view settles how to lift it: a
 \end{itemize}
 Round~1, a fresh agent on the new todo, forecast 87 more lines. It found 79 of them new: 38 risks on boxes that round~0 had just added, 14 more boxes, 16 boxes too vague to come out right, and 11 wishes. Most were faults in round~0's own fixes, as in any iteration where each step adds surface for the next. Round~2 found 44 new items in 51 lines, mostly risks on round~1's additions, and round~3 found 28. Round~4 found 22, but 10 of those came from the game's chapter documents, whose lists of untested parts no earlier round had read. Round~5 read the rest of them and found 32, of which 22 came from the documents and 10 from round~4's own additions. We stopped at the cap of five rounds.
 
-On its own surface the rite converged: the items each round found in the last round's additions fell 79, 44, 28, 12, 10. It never reached the stop line of five, because each new source behaved like new data. The lesson is to give round~0 every source at once (the todo, the commit subjects, every past list, and every document that lists untested parts), so later rounds only see their own surface. The last agent's view of what remains is what only play can find: how the new chapters feel, prices, the fixed numbers, run-time placement seen from a player's eye, and a real friend on a real connection. The real test of both rites is the developer's next playtest, which no model has seen.
+On its own surface the rite converged: the items each round found in the last round's additions fell 79, 44, 28, 12, 10 (Figure~\ref{fig:rite2}).
+
+The baseline here is not running the rite: the todo stays as it was, and all 176 forecast issues remain in the build. Against that baseline, the forecasts after each round found 55\%, 75\%, 84\%, 88\% and 82\% fewer new issues. Counting only what each round found in the last round's own fixes, round~5's 10 is 94\% below the baseline. These are issues a forecaster expects, not issues found by play: the reduction says the frozen memory can think of little more to raise, and only the developer's next playtest says whether that holds.
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\linewidth]{figures/rite2-rounds.png}
+  \caption{The Second Rite on playtest 17: new issues each round's forecast finds, against the baseline of not running it (dashed, 176). Blue: found in the last round's own fixes. Orange: found in a source the round read for the first time (the chapter documents).}
+  \label{fig:rite2}
+\end{figure} It never reached the stop line of five, because each new source behaved like new data. The lesson is to give round~0 every source at once (the todo, the commit subjects, every past list, and every document that lists untested parts), so later rounds only see their own surface. The last agent's view of what remains is what only play can find: how the new chapters feel, prices, the fixed numbers, run-time placement seen from a player's eye, and a real friend on a real connection. The real test of both rites is the developer's next playtest, which no model has seen.
 
 \section{Discussion}
 

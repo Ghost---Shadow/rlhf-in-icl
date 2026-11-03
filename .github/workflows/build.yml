@@ -32,7 +32,7 @@ jobs:
           mkdir -p site
           cp -r blog/. site/
           cp paper/main.pdf site/appeasing-the-machine-spirit.pdf
-          cp paper/figures/accuracy.png site/accuracy.png
+          cp paper/figures/*.png site/
           touch site/.nojekyll
 
       - name: Publish to gh-pages

@@ -153,13 +153,57 @@
   </table>
   </div>
 
+  <h2>Against the baselines</h2>
+
+  <p>The fair test is the three lists the memory never saw (191 notes). Two baselines don't use the First Rite at all. One gets no memory and no past lists. The other gets every earlier list raw and no memory.</p>
+
+  <figure>
+    <img src="rite1-baselines.png" alt="Horizontal bar chart of held-out notes caught. No memory and no past lists: 4 of 191, 2.1%, the baseline. First Rite rules memory: 6, 3.1%, 1.5 times the baseline. First Rite do/don't memory with the last three lists: 10, 5.2%, 2.5 times. Every earlier list raw with no memory: 29, 15.2%, 7.2 times.">
+    <figcaption>Grey bars are baselines without the First Rite; blue bars use it. Percentages are held-out notes caught outright.</figcaption>
+  </figure>
+
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>Held out, 191 notes</th><th class="n">Caught</th><th class="n">vs the no-memory baseline</th></tr></thead>
+    <tbody>
+      <tr><td>Baseline: no memory, no past lists</td><td class="n">4 (2.1%)</td><td class="n">1.0x</td></tr>
+      <tr><td>First Rite: rules memory, trained 3 epochs</td><td class="n">6 (3.1%)</td><td class="n">1.5x (+50%)</td></tr>
+      <tr><td>First Rite: do/don't memory + last 3 lists</td><td class="n">10 (5.2%)</td><td class="n">2.5x (+150%)</td></tr>
+      <tr><td>Baseline: every earlier list raw, no memory</td><td class="n">29 (15.2%)</td><td class="n">7.2x (+625%)</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <p>So the First Rite beats having nothing, by 50% with trained rules and by 150% with the do/don't memory. But it doesn't beat simply reading my old lists, which is 2.9 times better than the do/don't memory on its own. That's why the memory now says to read every earlier list raw, and spends its rules on how to read them. That combination (the do/don't memory plus every earlier list, with no cap on lines) hasn't been scored yet. My next playtest scores it.</p>
+
   <h2>Turning the forecast into work</h2>
 
   <p>The Second Rite took the frozen memory, today's todo and all sixteen lists, and forecast 176 notes for my next playtest. Twenty-two turned out to be already handled in the code. The rest became 64 fix boxes, 35 warnings on existing boxes, and 9 decisions with defaults. Every box says how it gets checked without me playing.</p>
 
-  <p>Then the rite ran again on the new todo, with a fresh agent each round, for five rounds. The new issues went 176, 79, 44, 28, 22, 32. Most of each round's finds were faults in the last round's fixes, which is what you'd expect: every fix adds a little surface. On that surface alone it converged: 79, 44, 28, 12, 10.</p>
+  <p>Then the rite ran again on the new todo, with a fresh agent each round, for five rounds. The baseline is not running it: the todo stays as it was, and the forecast's 176 issues stay in the build.</p>
 
-  <p>The bump at the end came from the agent finally reading my chapter docs, which list the parts I hadn't tested. Each new source behaved like new data. Next time, round zero gets every source at once. What's left is what only playing can find: how it feels, the prices, the numbers, and a real friend on a real connection.</p>
+  <figure>
+    <img src="rite2-rounds.png" alt="Bar chart of new forecast issues per round against a dashed baseline at 176. Round 0: 176, the baseline forecast. Round 1: 79, 55% below. Round 2: 44, 75% below. Round 3: 28, 84% below. Round 4: 22, of which 12 came from the last round's own fixes, 93% below on its own fixes. Round 5: 32, of which 10 from its own fixes, 94% below on its own fixes.">
+    <figcaption>Blue is what each round found in the last round's fixes. Orange is what it found in a source it read for the first time (my chapter docs). The dashed line is the baseline: no Second Rite.</figcaption>
+  </figure>
+
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>Round</th><th class="n">New issues found</th><th class="n">From the last round's fixes</th><th class="n">vs the 176 baseline</th></tr></thead>
+    <tbody>
+      <tr><td>0 (the baseline forecast)</td><td class="n">176</td><td class="n">n/a</td><td class="n">n/a</td></tr>
+      <tr><td>1</td><td class="n">79</td><td class="n">79</td><td class="n">55% fewer</td></tr>
+      <tr><td>2</td><td class="n">44</td><td class="n">44</td><td class="n">75% fewer</td></tr>
+      <tr><td>3</td><td class="n">28</td><td class="n">28</td><td class="n">84% fewer</td></tr>
+      <tr><td>4</td><td class="n">22</td><td class="n">12</td><td class="n">88% fewer (93% on its own fixes)</td></tr>
+      <tr><td>5</td><td class="n">32</td><td class="n">10</td><td class="n">82% fewer (94% on its own fixes)</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <p>Most of each round's finds were faults in the last round's fixes, which is what you'd expect: every fix adds a little surface. On that surface alone it converged, from 79 to 10. The bump at the end came from the agent finally reading my chapter docs, which list the parts I hadn't tested. A new source behaves like new data. Next time, round zero gets every source at once.</p>
+
+  <p>One caveat matters. These are issues a forecaster <em>expects</em> me to find, not issues I found. "94% fewer" means the frozen memory can't think of much more to complain about. Whether I can is the next playtest. What's left is what only playing can find: how it feels, the prices, the numbers, and a real friend on a real connection.</p>
 
   <p>The real test is my next playtest. If the list is short, the spirit is appeased. If it isn't, the list becomes pair seventeen, and the First Rite begins again.</p>
 
