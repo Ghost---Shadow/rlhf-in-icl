@@ -78,6 +78,38 @@ All numbers use a strict rubric: a forecast line scores only if it names the thi
 - **A label-free memory** of general do/don't pairs is honest. Its biggest loss was a 12-line cap, not missing knowledge: 298 of 520 misses were rules it already had with no room to write them.
 - **The Second Rite** turned a 176-note forecast into 64 fix boxes, 35 warnings and 9 decisions. Five more rounds found 79, 44, 28, 22 and 32 new items. On the rounds' own additions it converged (79, 44, 28, 12, 10). The late bump came from a new source, the game's chapter docs, so the next run gives round 0 every source at once.
 
+### The First Rite against its baselines
+
+On the 191 notes of three lists the memory never saw. Two baselines don't use the First Rite at all.
+
+![The First Rite against its baselines](paper/figures/rite1-baselines.png)
+
+| Held out, 191 notes | Caught | vs the no-memory baseline |
+|---|---|---|
+| Baseline: no memory, no past lists | 4 (2.1%) | 1.0x |
+| First Rite: rules memory, trained 3 epochs | 6 (3.1%) | 1.5x (+50%) |
+| First Rite: do/don't memory + last 3 lists | 10 (5.2%) | 2.5x (+150%) |
+| Baseline: every earlier list raw, no memory | 29 (15.2%) | 7.2x (+625%) |
+
+The First Rite beats having nothing, but not simply reading the old lists: that's 2.9 times the do/don't memory. So the memory now says to read every earlier list raw, and spends its rules on how to read them. That combination, with no cap on lines, is untested until the next playtest.
+
+### The Second Rite against not running it
+
+The baseline is leaving the todo as it was: all 176 forecast issues stay in the build.
+
+![The Second Rite, round by round](paper/figures/rite2-rounds.png)
+
+| Round | New issues found | From the last round's own fixes | vs the 176 baseline |
+|---|---|---|---|
+| 0 (the baseline forecast) | 176 | n/a | n/a |
+| 1 | 79 | 79 | 55% fewer |
+| 2 | 44 | 44 | 75% fewer |
+| 3 | 28 | 28 | 84% fewer |
+| 4 | 22 | 12 | 88% fewer (93% on its own fixes) |
+| 5 | 32 | 10 | 82% fewer (94% on its own fixes) |
+
+These are issues a forecaster *expects*, not issues found by play. "94% fewer" means the frozen memory can think of little more to raise. Whether the developer can is the next playtest.
+
 Full method, tables, the five data leaks we found, and the limitations are in the [preprint](https://ghost---shadow.github.io/rlhf-in-icl/appeasing-the-machine-spirit.pdf).
 
 ## Lessons, if you try this
@@ -98,6 +130,8 @@ paper/
   neurips_preprint.sty     a NeurIPS-like layout, written for this repo (not the official style)
   refs.bib                 references
   figures/accuracy.png     accuracy per epoch, training and held out
+  figures/rite1-baselines.png  the First Rite against its baselines, held out
+  figures/rite2-rounds.png     the Second Rite round by round, against not running it
 blog/
   index.html               the blog post, published to gh-pages
 .github/workflows/
