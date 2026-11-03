@@ -68,6 +68,8 @@
   td.n { text-align: right; font-variant-numeric: tabular-nums; }
   .table-wrap { overflow-x: auto; }
   code { background: var(--code); padding: 0.1rem 0.3rem; border-radius: 4px; font-size: 0.85em; }
+  pre { background: var(--code); border: 1px solid var(--rule); border-radius: 8px; padding: 1rem 1.1rem; overflow-x: auto; margin: 1.4rem 0; }
+  pre code { background: none; padding: 0; font-size: 0.8rem; line-height: 1.55; white-space: pre; }
   footer { margin-top: 3rem; color: var(--muted); font: 0.85rem/1.5 system-ui, sans-serif; border-top: 1px solid var(--rule); padding-top: 1rem; }
 </style>
 </head>
@@ -97,6 +99,25 @@
   <p><strong>The Second Rite</strong> freezes the memory and changes the todo instead. It forecasts what I'll complain about once the todo is built, writes those complaints into the todo as fixes, and forecasts again, until nothing new comes up. It's like optimising the input against a frozen network.</p>
 
   <p>If both rites work, my next playtest list comes back empty, and the machine spirit is appeased.</p>
+
+  <pre><code><b>The First Rite</b>: train the memory on past (todo, list) pairs
+  for each epoch:
+    agent = fresh agent                      # zero_grad()
+    for each past pair, in order:
+      forecast = agent.predict(memory, todo, earlier lists)   # before the list is opened
+      loss     = agent.compare(forecast, real list)          # a count, and what went wrong
+    memory = agent.rewrite(memory, patterns in the losses)  # do/don't rules, no past notes
+    commit memory                            # checkpoint
+    stop when held-out hits stop rising
+
+<b>The Second Rite</b>: freeze the memory, converge the todo
+  repeat:
+    agent    = fresh agent
+    forecast = agent.predict(memory, todo, every past list) # as if the todo were built
+    new      = lines the todo doesn't cover yet              # the loss
+    todo     = fold(todo, new)               # boxes, watch lines, decisions
+    commit todo
+  until new is (almost) empty</code></pre>
 
   <h2>The curve that lied</h2>
 
@@ -133,6 +154,8 @@
   <h2>Turning the forecast into work</h2>
 
   <p>The Second Rite took the frozen memory, today's todo and all sixteen lists, and forecast 176 notes for my next playtest. Twenty-two turned out to be already handled in the code. The rest became 64 fix boxes, 35 warnings on existing boxes, and 9 decisions with defaults. Every box says how it gets checked without me playing.</p>
+
+  <p>Then the rite ran again on the new todo, with a fresh agent each round. Each round found about half as much as the one before: 176 new issues, then 79, then 44. Most of each round's finds were faults in the last round's fixes, which is what you'd expect: every fix adds a little surface.</p>
 
   <p>The real test is my next playtest. If the list is short, the spirit is appeased. If it isn't, the list becomes pair seventeen, and the First Rite begins again.</p>
 

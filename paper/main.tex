@@ -6,6 +6,9 @@
 \usepackage{amsmath}
 \usepackage{enumitem}
 \usepackage{xcolor}
+\usepackage{algorithm}
+\usepackage[noend]{algpseudocode}
+\algrenewcommand\algorithmiccomment[1]{\hfill{\color{black!55}\(\triangleright\) #1}}
 \usepackage[colorlinks=true,linkcolor=blue!50!black,citecolor=blue!50!black,urlcolor=blue!50!black]{hyperref}
 
 \setlist{itemsep=1pt,topsep=2pt}
@@ -79,11 +82,54 @@ An early lenient rubric also gave half credit for ``the right kind of problem in
   \end{tabular}
 \end{table}
 
-\paragraph{The First Rite: train the memory.} Each epoch, a fresh agent (Claude Opus 5.5 at high effort) reads the memory file and walks pairs 02--16 in order. For each pair it reads only the todo and the commit subjects since the last list. It writes at most twelve forecast lines to a file, then opens the label and writes a loss: the self-score, and what it predicted against what came. After the last pair it aggregates its losses and rewrites the memory file, then commits it. Inputs are prepared as files, so no agent reads the game's codebase. One persistent agent scores every epoch, so the numbers compare. It also estimates \emph{recall}: hits that restate a note from the scored list itself, with a detail no input gives.
+\begin{algorithm}[t]
+  \caption{The First Rite: train the memory on past pairs}
+  \label{alg:first}
+  \small
+  \begin{algorithmic}[1]
+    \Require pairs $(t_k, y_k)$ for $k = 2, \dots, K$ (todo, playtest list); commit subjects $s_k$; memory $M_0$; fixed scorer $S$
+    \For{$e = 1, 2, \dots$}
+      \State $A \gets$ a fresh agent \Comment{\texttt{zero\_grad()}: no context carries over}
+      \For{$k = 2, \dots, K$}
+        \State $\hat{y}_k \gets A.\textsc{Forecast}(M_{e-1}, t_k, s_k, y_{<k})$ \Comment{written before $y_k$ is opened}
+        \State $\ell_k \gets A.\textsc{Loss}(\hat{y}_k, y_k)$ \Comment{a count, and what went wrong in words}
+      \EndFor
+      \State $g \gets A.\textsc{Aggregate}(\ell_2, \dots, \ell_K)$ \Comment{patterns across pairs}
+      \State $M_e \gets A.\textsc{Rewrite}(M_{e-1}, g)$ \Comment{general do/don't pairs; no past notes}
+      \State commit $M_e$ \Comment{checkpoint}
+      \State $(\mathit{hits}_e, \mathit{recall}_e) \gets S(\hat{y}, y)$ \Comment{same scorer every epoch}
+      \If{$\mathit{hits}_e - \mathit{recall}_e$ stops rising, or held-out hits stop rising, or $M_e = M_{e-1}$}
+        \State \Return $M_e$
+      \EndIf
+    \EndFor
+  \end{algorithmic}
+\end{algorithm}
+
+\begin{algorithm}[t]
+  \caption{The Second Rite: freeze the memory, converge the todo}
+  \label{alg:second}
+  \small
+  \begin{algorithmic}[1]
+    \Require frozen memory $M$; current todo $T_0$; subjects $s$; every past list $y_1, \dots, y_K$; threshold $\tau$; cap $R$
+    \For{$r = 0, 1, \dots, R - 1$}
+      \State $A \gets$ a fresh agent \Comment{reads $T_r$ as it now stands}
+      \State $\hat{y} \gets A.\textsc{Forecast}(M, T_r, s, y_{1..K})$ \Comment{as if every open box were built as written}
+      \State $N \gets \{\, n \in \hat{y} : T_r \text{ doesn't already cover } n \,\}$ \Comment{the loss}
+      \State $T_{r+1} \gets \textsc{Fold}(T_r, N)$ \Comment{a box, a watch line, a tightened box, or a decision}
+      \State commit $T_{r+1}$
+      \If{$|N| < \tau$}
+        \State \Return $T_{r+1}$ \Comment{converged: the forecast finds nothing new}
+      \EndIf
+    \EndFor
+    \State \Return $T_R$
+  \end{algorithmic}
+\end{algorithm}
+
+\paragraph{The First Rite: train the memory.} Algorithm~\ref{alg:first} gives the loop. Each epoch, a fresh agent (Claude Opus 5.5 at high effort) reads the memory file and walks pairs 02--16 in order. For each pair it reads only the todo and the commit subjects since the last list. It writes at most twelve forecast lines to a file, then opens the label and writes a loss: the self-score, and what it predicted against what came. After the last pair it aggregates its losses and rewrites the memory file, then commits it. Inputs are prepared as files, so no agent reads the game's codebase. One persistent agent scores every epoch, so the numbers compare. It also estimates \emph{recall}: hits that restate a note from the scored list itself, with a detail no input gives.
 
 \paragraph{Validation.} Beside the main loop, a second track starts from an empty memory, trains on pairs 02--13, and never opens lists 14--16. Each epoch it forecasts 14--16 from the memory as loaded, before training, and the same scorer grades those forecasts. That curve is the honest one.
 
-\paragraph{The Second Rite: converge the todo.} The memory is frozen. A fresh agent reads the memory, the current todo, and every past list raw. It forecasts the developer's notes on the build the todo describes, as if every open box were built as written. Each new forecast line is folded into the todo, as a fix box, a ``watch'' line on an existing box, a tightened box, or a decision with a default. Lines that need no building are dropped. The next round is a fresh agent on the new todo. The rite stops when a round adds almost nothing. The loss here is the count of new issues, and the input, not the model, is what moves.
+\paragraph{The Second Rite: converge the todo.} Algorithm~\ref{alg:second} gives the loop. The memory is frozen. A fresh agent reads the memory, the current todo, and every past list raw. It forecasts the developer's notes on the build the todo describes, as if every open box were built as written. Each new forecast line is folded into the todo, as a fix box, a ``watch'' line on an existing box, a tightened box, or a decision with a default. Lines that need no building are dropped. The next round is a fresh agent on the new todo. The rite stops when a round adds almost nothing. The loss here is the count of new issues, and the input, not the model, is what moves.
 
 \section{Results}
 \label{sec:results}
@@ -140,7 +186,7 @@ The cap was the largest loss, and the developer's view settles how to lift it: a
   \item 90 became 64 fix boxes, each with a check that needs no human player;
   \item 20 wishes became 9 decisions with defaults.
 \end{itemize}
-Round~1, a fresh agent on the new todo, forecast 87 more lines. It found 79 of them new: 38 risks on boxes that round~0 had just added, 14 more boxes, 16 boxes too vague to come out right, and 11 wishes. Most were faults in round~0's own fixes, as in any iteration where each step adds surface for the next. Later rounds are running at the time of writing. The real test of both rites is the developer's next playtest, which no model has seen.
+Round~1, a fresh agent on the new todo, forecast 87 more lines. It found 79 of them new: 38 risks on boxes that round~0 had just added, 14 more boxes, 16 boxes too vague to come out right, and 11 wishes. Most were faults in round~0's own fixes, as in any iteration where each step adds surface for the next. Round~2 found 44 new items in 51 lines, mostly risks on round~1's additions. The new-issue count falls by roughly half each round (176, 79, 44), and later rounds are running at the time of writing. The real test of both rites is the developer's next playtest, which no model has seen.
 
 \section{Discussion}
 
