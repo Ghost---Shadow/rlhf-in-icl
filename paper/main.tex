@@ -1,0 +1,172 @@
+\documentclass[10pt]{article}
+\usepackage{neurips_preprint}
+\usepackage[numbers,sort&compress]{natbib}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{amsmath}
+\usepackage{enumitem}
+\usepackage{xcolor}
+\usepackage[colorlinks=true,linkcolor=blue!50!black,citecolor=blue!50!black,urlcolor=blue!50!black]{hyperref}
+
+\setlist{itemsep=1pt,topsep=2pt}
+\preprintnote{Preprint. Work in progress, November 2026.}
+
+\title{Appeasing the Machine Spirit:\\Two Rites of RLHF in In-Context Learning\\for Predicting and Preventing Playtest Notes}
+
+\author{Souradeep Nanda}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+A solo developer of an open-world soulslike game plays each new build and writes a list of notes. We ask whether a language-model agent can predict that list from the todo the build was made from, and then change the todo so the list comes back empty. We frame both as learning with no weight updates. The ``weights'' are one plain-text memory file, the data are sixteen git-tagged pairs of todo and playtest list, and every epoch is run by a fresh agent, so the file is the only thing carried forward. The \emph{First Rite} trains the memory on past pairs; the \emph{Second Rite} freezes it and optimises the todo against it, as one would optimise an input against a frozen network. On the training pairs, accuracy rose from 5.5\% to 21.1\% of notes caught over four epochs. But a fixed scorer found that most of the gain was recall: the memory had stored the labels. With recall removed the curve was flat from epoch~2, and a held-out track converged near 3\%. Reading the raw earlier lists predicted held-out notes five times better than any distilled rule set. A memory rewritten as general do/don't pairs, with no past notes in it, caught 5.7\% with zero recall, and its misses point to a line budget, not missing knowledge. We report the protocol, the leaks we found, and what transfers.
+\end{abstract}
+
+\section{Introduction}
+
+Playtesting is where a game's problems surface, and for a solo developer it's also the bottleneck: every note costs a play session, and many notes repeat. Over one month of development of \emph{The Good Vet}, a Unity vet game with soulslike fights, the developer wrote sixteen playtest lists against sixteen states of a todo file. Each list was triaged back into the todo, built, and played again. Both files live in git, so the history pairs each todo with the list it produced.
+
+That history is a small supervised dataset of one person's reactions. It invites two questions. Can an agent read a todo and predict the notes the developer will write? And if it can, can it rewrite the todo so those notes never need writing?
+
+We answer both with in-context learning only. Nothing is fine-tuned. The learnt state is a markdown file in the agent's memory directory. We call the procedure \emph{RLHF in ICL}: the human feedback is the developer's own notes, the policy is the forecast, and the update is a rewrite of the memory file. Following the developer, we call the two procedures \emph{rites}. The First Rite trains the memory, and the Second Rite applies it. The machine spirit is appeased when the playtest list comes back empty.
+
+Our contributions are:
+\begin{itemize}[leftmargin=*]
+  \item A protocol that maps training vocabulary onto agent work: memory file as weights, a fresh agent per epoch as \texttt{zero\_grad()}, git tags as the dataset, and a fixed scorer as the metric (Section~\ref{sec:method}).
+  \item Evidence that a naive version overfits by storing labels in the memory, and a recall check that exposes it (Section~\ref{sec:results}).
+  \item A held-out comparison showing that raw recent history beats distilled rules by about five times on unseen lists.
+  \item A label-free memory written as contrastive do/don't pairs, its frozen test, and an analysis of what it misses and why.
+\end{itemize}
+
+\section{Related work}
+
+Agents that improve by writing reflections into their context are studied as verbal reinforcement \citep{shinn2023reflexion} and as optimisation through text \citep{yuksekgonul2024textgrad, yang2023opro, khattab2023dspy}. Our First Rite is in that family, with two differences: the update target is a single persistent file used across sessions, and the data are one developer's real playtest notes rather than a benchmark. Using a model to grade a model's output is common practice \citep{zheng2023judging}. We use one fixed grader across all runs, so scores compare even though the grader may be biased. The Second Rite borrows the shape of input optimisation against a frozen network \citep{szegedy2014intriguing}: the model is held fixed and the input moves to reduce a loss. RLHF \citep{ouyang2022training} trains weights from human preferences. Here the preferences are free-text notes, and only the context moves. In-context learning itself goes back to \citet{brown2020language}.
+
+\section{Setting}
+\label{sec:setting}
+
+\paragraph{Data.} Sixteen playtest lists, written between 2026-10-01 and 2026-11-02, each paired with the todo the build was played against. A pair is two git tags: \texttt{todo/NN} at the commit the list was played against, and \texttt{playtest/NN} where the list is complete. Lists often took several commits, and early ones were committed together with their triage, so tags were needed to make the pairs exact. Each list was also rewritten with clean grammar and one issue per line, tagged \texttt{playtest-rewritten/NN}. Nothing was added or dropped: 551 original lines became 575. Pairs 02--16 are scored, which gives 564 notes. Pair 01 has no earlier history.
+
+\paragraph{The notes.} The developer's notes are concrete. They name the thing, what's wrong with it, and usually what they want (``Bloat looks like GI upset; make it puff up and explode''). Lists run from 6 notes after a small fix build to 85 after a large content pass. Many notes repeat earlier ones, and many are wishes borrowed from games the developer plays.
+
+\paragraph{Metric.} For each real note, a forecast scores 1 if one of its lines names this thing and this problem, closely enough that a ``watch for this'' line on the todo would have caught it. Otherwise it scores 0. One line may match several notes. The headline number is notes caught out of notes written. False alarms don't count against a forecast, as a predicted problem the developer didn't write may be one they missed.
+
+An early lenient rubric also gave half credit for ``the right kind of problem in the right area''. It made vague lines look strong, and flipped the ranking of two forecast sets: 224 against 207.5 under it, 54 against 62 under the strict rubric. The developer's objection settled it: ``I never write crude and vague lines like `case fights need tuning'. What tuning?'' All numbers below are strict.
+
+\section{Method}
+\label{sec:method}
+
+\begin{table}[t]
+  \caption{The vocabulary of the two rites.}
+  \label{tab:analogy}
+  \centering
+  \small
+  \begin{tabular}{@{}p{0.27\linewidth}p{0.66\linewidth}@{}}
+    \toprule
+    Deep learning & The rites \\
+    \midrule
+    Weights & One markdown memory file, versioned in its own git repository \\
+    Dataset & Tag pairs: \texttt{todo/NN} as input, \texttt{playtest-rewritten/NN} as label \\
+    Forward pass & An agent forecasts a list from a todo, writing before it opens the label \\
+    Loss & Forecast against label, as a count and a written account of misses, wrong directions and false alarms \\
+    Backward pass & Aggregating the per-pair losses into patterns \\
+    \texttt{optimizer.step()} & Rewriting the memory file \\
+    \texttt{zero\_grad()} & A fresh agent each epoch; the file is all that carries over \\
+    Checkpoint & A commit and tag in the memory repository \\
+    Data leakage & Reading a label before its forecast, or reusing an agent across epochs \\
+    Overfitting & Past notes written into the memory \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\paragraph{The First Rite: train the memory.} Each epoch, a fresh agent (Claude Opus 5.5 at high effort) reads the memory file and walks pairs 02--16 in order. For each pair it reads only the todo and the commit subjects since the last list. It writes at most twelve forecast lines to a file, then opens the label and writes a loss: the self-score, and what it predicted against what came. After the last pair it aggregates its losses and rewrites the memory file, then commits it. Inputs are prepared as files, so no agent reads the game's codebase. One persistent agent scores every epoch, so the numbers compare. It also estimates \emph{recall}: hits that restate a note from the scored list itself, with a detail no input gives.
+
+\paragraph{Validation.} Beside the main loop, a second track starts from an empty memory, trains on pairs 02--13, and never opens lists 14--16. Each epoch it forecasts 14--16 from the memory as loaded, before training, and the same scorer grades those forecasts. That curve is the honest one.
+
+\paragraph{The Second Rite: converge the todo.} The memory is frozen. A fresh agent reads the memory, the current todo, and every past list raw. It forecasts the developer's notes on the build the todo describes, as if every open box were built as written. Each new forecast line is folded into the todo, as a fix box, a ``watch'' line on an existing box, a tightened box, or a decision with a default. Lines that need no building are dropped. The next round is a fresh agent on the new todo. The rite stops when a round adds almost nothing. The loss here is the count of new issues, and the input, not the model, is what moves.
+
+\section{Results}
+\label{sec:results}
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\linewidth]{figures/accuracy.png}
+  \caption{Left: the First Rite on pairs 02--16 (in-sample). All hits rise; hits with recall removed are flat from epoch 2. Right: the validation track on held-out pairs 14--16. Dashed lines are agents with the raw earlier lists in context and no rules memory.}
+  \label{fig:accuracy}
+\end{figure}
+
+\begin{table}[t]
+  \caption{Notes caught, strict rubric, one fixed scorer. Training is pairs 02--16 (564 notes). Held out is pairs 14--16 (191 notes), never opened by the validation track.}
+  \label{tab:main}
+  \centering
+  \small
+  \begin{tabular}{@{}lrrr@{}}
+    \toprule
+    Run & All hits (564) & Recall removed & Held out (191) \\
+    \midrule
+    First Rite, epoch 1 & 31 (5.5\%) & $\sim$27 & -- \\
+    First Rite, epoch 2 & 58 (10.3\%) & $\sim$39 & -- \\
+    First Rite, epoch 3 & 89 (15.8\%) & $\sim$36 & -- \\
+    First Rite, epoch 4 & 119 (21.1\%) & $\sim$38 & -- \\
+    \midrule
+    Validation, epochs 1--3 & -- & -- & 4, 5, 6 (2.1--3.1\%) \\
+    \midrule
+    Raw earlier lists, no rules memory & 63 (11.2\%) & 63 & 29 (15.2\%) \\
+    First blind forecasts & 55 (9.8\%) & 55 & 24 (12.6\%) \\
+    Frozen do/don't memory, last 3 lists & 32 (5.7\%) & 32 & 10 (5.2\%) \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\paragraph{Training accuracy rose, but the gain was memory.} Over four epochs the First Rite climbed from 31 to 119 notes (Table~\ref{tab:main}, Figure~\ref{fig:accuracy}). The fixed scorer flagged that many hits repeated the scored list almost word for word. By epoch~4, about 81 of 119 hits were recall. With recall removed the curve was flat from epoch~2, at about 38. Each epoch's agent had written past notes into the memory: lists of chronic offenders tagged with the lists they came from, per-tool lists of asks, and a ladder of wishes. Those are the labels. A forecaster that reads them is looking things up.
+
+\paragraph{Validation converged low.} The validation track, which never saw lists 14--16, caught 4, 5 and 6 of their 191 notes over three epochs. That's within noise of each other, and flat.
+
+\paragraph{Raw history beats distilled rules.} An agent with no rules memory but with every earlier list in context caught 29 of the same 191 held-out notes: five times the validation track. The notes that come are mostly repeats of named things, half-finished asks, and the next step of a wish. Those live in the raw lists. A rule about them (``fixes checked only by a test come back'') doesn't say which thing will come back.
+
+\paragraph{A label-free memory.} The memory was rewritten in general terms as contrastive do/don't pairs, each rule stated with its opposite, and with no past notes in it. Frozen and tested by a fresh agent with the last three lists in context, it caught 32 of 564 notes with zero recall, and 10 of 191 on pairs 14--16, twice the validation track's best. Its 520 misses split three ways:
+\begin{itemize}[leftmargin=*]
+  \item 298 were covered by rules the memory already had, with no line left under the twelve-line cap.
+  \item 137 could not have been predicted from any input: new ideas, one-off bugs, taste. Writing them in would be overfitting.
+  \item 85 pointed to missing rules. Four held across five or more lists and were added: things built from one template get called samey; text gets judged on whether it can be read and found; a fix checked only by a test can be back by the next list; anything needing precision gets asked to be more generous. The rest came from one or two lists and stayed out.
+\end{itemize}
+The cap was the largest loss, and the developer's view settles how to lift it: a predicted problem that doesn't come up costs nothing, and ``it could be an oversight on my part''. Of the 146 forecast lines that matched no note, the scorer judged 92 to be plausible problems the developer may simply not have written down.
+
+\paragraph{The Second Rite.} From the frozen memory, the current todo and all sixteen lists, a fresh agent forecast 176 notes for the next playtest. Folded into the todo:
+\begin{itemize}[leftmargin=*]
+  \item 22 were already handled in the code;
+  \item 4 were play-only, with nothing to build;
+  \item 40 became 35 watch lines on existing boxes;
+  \item 90 became 64 fix boxes, each with a check that needs no human player;
+  \item 20 wishes became 9 decisions with defaults.
+\end{itemize}
+Later rounds are running at the time of writing. The real test of both rites is the developer's next playtest, which no model has seen.
+
+\section{Discussion}
+
+\paragraph{Leaks are easy to make and hard to see.} We found five during the work:
+\begin{itemize}[leftmargin=*]
+  \item a commit subject that named a note before it was written;
+  \item early commits that held a list together with its own triage;
+  \item an agent counting the lines of label files before forecasting;
+  \item a todo that triaged the list being scored;
+  \item a memory that stored the labels.
+\end{itemize}
+Only the last one moved the headline number much, and only a scorer asked to look for recall caught it.
+
+\paragraph{Weights versus context.} In this setting, the context window does more than the weights. A short memory of how the developer reacts helps, but the specifics that score come from reading the history at forecast time. That argues for a memory that says \emph{how} to read the history, not one that summarises it.
+
+\paragraph{Onboarding cost.} A fresh agent per epoch is what keeps an epoch blind, and it's also expensive: each one reads about 200k tokens of todos and lists before it writes a line. We kept agent count low and gave each a whole epoch end to end. The developer's framing: ``Just like real life, onboarding is costly.''
+
+\paragraph{Limitations.} One developer, one game, sixteen lists. The forecaster and the scorer are the same model family, and the scorer's recall estimate is a judgement call. Much of the training data was seen while the first memory was written, so every in-sample number is optimistic. The held-out set is three lists. The Second Rite has no real-world score yet.
+
+\section{Conclusion}
+
+The First Rite can be run as training, but its curve lies unless recall is measured. Once the labels are kept out of the memory, what remains is a modest, honest prior plus a strong reliance on raw history. The Second Rite turns that prior into work. Whether the machine spirit is appeased will be known at the next playtest.
+
+\paragraph{Acknowledgements.} The experiments were run by Claude Opus 5.5 agents in Claude Code. The developer supplied every playtest note and every correction to the method.
+
+\bibliographystyle{plainnat}
+\bibliography{refs}
+
+\end{document}

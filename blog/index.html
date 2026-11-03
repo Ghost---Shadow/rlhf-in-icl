@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Appeasing the Machine Spirit</title>
+<meta name="description" content="Two rites of RLHF in in-context learning: predicting a solo developer's playtest notes, and changing the todo so they never need writing.">
+<style>
+  :root {
+    --bg: #fbfaf7;
+    --fg: #1d1d1b;
+    --muted: #5d5a54;
+    --rule: #e2ded6;
+    --accent: #8a2c1f;
+    --code: #f1eee8;
+    --card: #ffffff;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #141413;
+      --fg: #ece9e2;
+      --muted: #a29e95;
+      --rule: #2e2d2a;
+      --accent: #e0846f;
+      --code: #1f1e1c;
+      --card: #1b1a18;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--fg);
+    font: 18px/1.65 Georgia, "Times New Roman", serif;
+  }
+  main { max-width: 42rem; margin: 0 auto; padding: 3rem 16px 5rem; }
+  header p.kicker {
+    font: 600 0.8rem/1 system-ui, sans-serif;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin: 0 0 0.8rem;
+  }
+  h1 { font-size: 2.2rem; line-height: 1.15; margin: 0 0 0.6rem; }
+  h2 { font-size: 1.35rem; margin: 2.4rem 0 0.6rem; }
+  .byline { color: var(--muted); font: 0.95rem/1.5 system-ui, sans-serif; margin: 0 0 1.6rem; }
+  .paper {
+    display: flex; gap: 0.8rem; flex-wrap: wrap; align-items: center;
+    border: 1px solid var(--rule); background: var(--card);
+    border-radius: 10px; padding: 0.9rem 1.1rem; margin: 1.6rem 0;
+    font: 0.95rem/1.4 system-ui, sans-serif;
+  }
+  .paper a.button {
+    background: var(--accent); color: var(--bg); text-decoration: none;
+    padding: 0.5rem 0.9rem; border-radius: 6px; font-weight: 600;
+  }
+  a { color: var(--accent); }
+  figure { margin: 1.8rem 0; }
+  figure img { width: 100%; height: auto; border: 1px solid var(--rule); border-radius: 6px; background: #fff; }
+  figcaption { color: var(--muted); font: 0.85rem/1.5 system-ui, sans-serif; margin-top: 0.5rem; }
+  blockquote {
+    margin: 1.4rem 0; padding: 0.2rem 0 0.2rem 1rem;
+    border-left: 3px solid var(--accent); color: var(--muted); font-style: italic;
+  }
+  table { width: 100%; border-collapse: collapse; font: 0.9rem/1.4 system-ui, sans-serif; margin: 1.2rem 0; }
+  th, td { text-align: left; padding: 0.45rem 0.5rem; border-bottom: 1px solid var(--rule); }
+  th { color: var(--muted); font-weight: 600; }
+  td.n { text-align: right; font-variant-numeric: tabular-nums; }
+  .table-wrap { overflow-x: auto; }
+  code { background: var(--code); padding: 0.1rem 0.3rem; border-radius: 4px; font-size: 0.85em; }
+  footer { margin-top: 3rem; color: var(--muted); font: 0.85rem/1.5 system-ui, sans-serif; border-top: 1px solid var(--rule); padding-top: 1rem; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <p class="kicker">RLHF in ICL</p>
+    <h1>Appeasing the Machine Spirit</h1>
+    <p class="byline">Souradeep Nanda · November 2026</p>
+  </header>
+
+  <div class="paper">
+    <a class="button" href="appeasing-the-machine-spirit.pdf">Read the preprint (PDF)</a>
+    <span>Two rites for predicting, and then preventing, a solo developer's playtest notes.</span>
+  </div>
+
+  <p>I'm making a game alone: <em>The Good Vet</em>, an open-world vet game with soulslike fights. Every few days I play the latest build and write down everything that bothers me. Then the list goes back into the todo, the todo gets built, and I play again.</p>
+
+  <p>After a month there were sixteen of those lists in git, each one written against a todo. That's a dataset. So I asked an agent two questions. Can you read the todo and predict what I'll write? And if you can, can you change the todo so I don't have to write it?</p>
+
+  <h2>Two rites</h2>
+
+  <p>Nothing is fine-tuned. The "weights" are one markdown file in the agent's memory folder. The "dataset" is git tags pairing each todo with its list. Each epoch is a fresh agent, cleansed of all prior context. That's the <code>zero_grad()</code>, so the file is the only thing that carries over.</p>
+
+  <p><strong>The First Rite</strong> trains the memory. An agent reads the memory, forecasts each past list from its todo, opens the real list, writes down what it got wrong, and rewrites the memory.</p>
+
+  <p><strong>The Second Rite</strong> freezes the memory and changes the todo instead. It forecasts what I'll complain about once the todo is built, writes those complaints into the todo as fixes, and forecasts again, until nothing new comes up. It's like optimising the input against a frozen network.</p>
+
+  <p>If both rites work, my next playtest list comes back empty, and the machine spirit is appeased.</p>
+
+  <h2>The curve that lied</h2>
+
+  <figure>
+    <img src="accuracy.png" alt="Two charts. Left: training accuracy rises from 5.5% to 21% over four epochs, but with recall removed it stays flat near 7%. Right: held-out accuracy stays near 3%, far below a dashed line at 15% for an agent reading the raw earlier lists.">
+    <figcaption>Left: training rose, but with recall removed it was flat from epoch 2. Right: on three lists the memory never saw, a rules memory caught about 3%, while an agent reading the raw earlier lists caught 15%.</figcaption>
+  </figure>
+
+  <p>Training accuracy went from 5.5% of my notes to 21% in four epochs, which looked great. Then the scorer pointed out that many hits repeated my notes almost word for word. Each epoch, the agent had written my past notes into the memory: offender lists, per-tool wish lists. By epoch four, about 81 of its 119 hits were recall. With that removed, the curve was flat from epoch two.</p>
+
+  <blockquote>"This is cheating. You can't just write out the diff in the memory itself."</blockquote>
+
+  <p>So we held out my last three lists and trained a fresh memory on the rest. On the lists it had never seen, it caught 4, 5 and 6 notes out of 191: about 3%. An agent with no rules memory at all, reading my earlier lists raw, caught 29. Five times better.</p>
+
+  <h2>What actually predicts me</h2>
+
+  <p>Most of my notes are repeats of named things, half-finished asks, or the next step of a wish I already made. Those live in the raw history, not in rules about the history. A rule like "fixes checked only by a test come back" is true, but it doesn't say <em>which</em> thing will come back.</p>
+
+  <p>So the memory was rewritten as general do/don't pairs, each rule with its opposite, with none of my past notes in it. Frozen and tested, it caught 5.7% with zero recall, and twice the held-out score of the trained rules. Most of its misses were rules it already had but no room to write, because I'd capped it at twelve lines. A predicted problem I don't mention costs nothing. It could be an oversight on my part.</p>
+
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>Run</th><th class="n">Training (564 notes)</th><th class="n">Held out (191)</th></tr></thead>
+    <tbody>
+      <tr><td>First Rite, epoch 4, all hits</td><td class="n">119</td><td class="n">n/a</td></tr>
+      <tr><td>First Rite, epoch 4, recall removed</td><td class="n">~38</td><td class="n">n/a</td></tr>
+      <tr><td>Validation, rules trained on the rest</td><td class="n">n/a</td><td class="n">4 to 6</td></tr>
+      <tr><td>Raw earlier lists, no rules memory</td><td class="n">63</td><td class="n">29</td></tr>
+      <tr><td>Do/don't memory, frozen</td><td class="n">32</td><td class="n">10</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <h2>Turning the forecast into work</h2>
+
+  <p>The Second Rite took the frozen memory, today's todo and all sixteen lists, and forecast 176 notes for my next playtest. Twenty-two turned out to be already handled in the code. The rest became 64 fix boxes, 35 warnings on existing boxes, and 9 decisions with defaults. Every box says how it gets checked without me playing.</p>
+
+  <p>The real test is my next playtest. If the list is short, the spirit is appeased. If it isn't, the list becomes pair seventeen, and the First Rite begins again.</p>
+
+  <h2>What I'd tell you</h2>
+
+  <p>Measure recall, or your curve will lie. Keep the labels out of the weights. Give the model the raw history, and spend the memory on how to read it. And a fresh agent per epoch is expensive, because onboarding is costly, just like real life.</p>
+
+  <footer>
+    The method, the numbers and the prompts are in the <a href="appeasing-the-machine-spirit.pdf">preprint</a>. The experiments were run by Claude Opus 5.5 agents in Claude Code. MIT licence.
+  </footer>
+</main>
+</body>
+</html>
