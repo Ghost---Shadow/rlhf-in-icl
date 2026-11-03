@@ -54,6 +54,7 @@
     background: var(--accent); color: var(--bg); text-decoration: none;
     padding: 0.5rem 0.9rem; border-radius: 6px; font-weight: 600;
   }
+  .paper a.button.ghost { background: transparent; color: var(--accent); border: 1px solid var(--accent); }
   a { color: var(--accent); }
   figure { margin: 1.8rem 0; }
   figure img { width: 100%; height: auto; border: 1px solid var(--rule); border-radius: 6px; background: #fff; }
@@ -83,6 +84,7 @@
 
   <div class="paper">
     <a class="button" href="appeasing-the-machine-spirit.pdf">Read the preprint (PDF)</a>
+    <a class="button ghost" href="https://github.com/Ghost---Shadow/rlhf-in-icl">Source on GitHub</a>
     <span>Two rites for predicting, and then preventing, a solo developer's playtest notes.</span>
   </div>
 
@@ -164,7 +166,7 @@
   <p>Measure recall, or your curve will lie. Keep the labels out of the weights. Give the model the raw history, and spend the memory on how to read it. And a fresh agent per epoch is expensive, because onboarding is costly, just like real life.</p>
 
   <footer>
-    The method, the numbers and the prompts are in the <a href="appeasing-the-machine-spirit.pdf">preprint</a>. The experiments were run by Claude Opus 5.5 agents in Claude Code. MIT licence.
+    The method, the numbers and the prompts are in the <a href="appeasing-the-machine-spirit.pdf">preprint</a>. The LaTeX source, this page and the CI that builds both are on <a href="https://github.com/Ghost---Shadow/rlhf-in-icl">GitHub</a>. The experiments were run by Claude Opus 5.5 agents in Claude Code. MIT licence.
   </footer>
 </main>
 </body>
