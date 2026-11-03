@@ -13,7 +13,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Compile the preprint
         uses: xu-cheng/latex-action@v3
@@ -22,7 +22,7 @@ jobs:
           working_directory: paper
 
       - name: Upload the PDF
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: preprint
           path: paper/main.pdf
