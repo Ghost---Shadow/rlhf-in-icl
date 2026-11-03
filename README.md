@@ -76,7 +76,7 @@ All numbers use a strict rubric: a forecast line scores only if it names the thi
 - **The training curve lied.** By epoch 4, about 81 of 119 hits were recall. The agents had written my past notes into the memory: the labels in the weights.
 - **Raw history beats distilled rules,** about five to one on lists the memory never saw. Most notes are repeats of named things, half-finished asks, or the next step of a wish, and those live in the raw lists.
 - **A label-free memory** of general do/don't pairs is honest. Its biggest loss was a 12-line cap, not missing knowledge: 298 of 520 misses were rules it already had with no room to write them.
-- **The Second Rite** turned a 176-note forecast into 64 fix boxes, 35 warnings and 9 decisions. Later rounds found 79, then 44 new items, roughly halving each round.
+- **The Second Rite** turned a 176-note forecast into 64 fix boxes, 35 warnings and 9 decisions. Five more rounds found 79, 44, 28, 22 and 32 new items. On the rounds' own additions it converged (79, 44, 28, 12, 10). The late bump came from a new source, the game's chapter docs, so the next run gives round 0 every source at once.
 
 Full method, tables, the five data leaks we found, and the limitations are in the [preprint](https://ghost---shadow.github.io/rlhf-in-icl/appeasing-the-machine-spirit.pdf).
 
