@@ -43,7 +43,22 @@ Our contributions are:
 
 \section{Related work}
 
-Agents that improve by writing reflections into their context are studied as verbal reinforcement \citep{shinn2023reflexion} and as optimisation through text \citep{yuksekgonul2024textgrad, yang2023opro, khattab2023dspy}. Our First Rite is in that family, with two differences: the update target is a single persistent file used across sessions, and the data are one developer's real playtest notes rather than a benchmark. Using a model to grade a model's output is common practice \citep{zheng2023judging}. We use one fixed grader across all runs, so scores compare even though the grader may be biased. The Second Rite borrows the shape of input optimisation against a frozen network \citep{szegedy2014intriguing}: the model is held fixed and the input moves to reduce a loss. RLHF \citep{ouyang2022training} trains weights from human preferences. Here the preferences are free-text notes, and only the context moves. In-context learning itself goes back to \citet{brown2020language}.
+\paragraph{Learning in the context.} In-context learning goes back to \citet{brown2020language}, and it keeps improving with hundreds of examples in the prompt \citep{agarwal2024manyshot}. RLHF \citep{ouyang2022training} trains weights from human preferences. Here the preferences are free-text notes, and only the context moves.
+
+\paragraph{Memories that learn.} Agents that improve by writing reflections into their context are studied as verbal reinforcement \citep{shinn2023reflexion} and as optimisation through text \citep{yuksekgonul2024textgrad, yang2023opro, khattab2023dspy}. The closest to our First Rite update a persistent memory between tasks:
+\begin{itemize}[leftmargin=*]
+  \item ExpeL distils insights from successes and failures, edits them only through add, upvote, downvote and edit operations, and also recalls whole past examples \citep{zhao2024expel}.
+  \item Dynamic Cheatsheet keeps a self-curated memory at test time, and its stronger variant retrieves the most similar past inputs with their solutions \citep{suzgun2026dynamic}.
+  \item GEPA evolves prompts by reflecting on traces, and keeps a Pareto front of candidates in place of a single best \citep{agrawal2026gepa}.
+  \item ACE treats the context as a playbook of itemised bullets with helpful and harmful counts, changed only by small deltas \citep{zhang2026ace}. It names the failure our First Rite showed: rewriting the whole context each step collapses it. In their case the context fell from 18,282 tokens to 122, and accuracy fell below the no-memory baseline.
+\end{itemize}
+Our First Rite differs in its data, one developer's real playtest notes, and in its evidence. Its training curve rose by storing the labels in the memory. A held-out track and a recall count were what exposed it.
+
+\paragraph{Personal prediction from history.} PRELUDE learns a user's latent preferences from their edits. Its CIPHER algorithm retrieves the preferences inferred for the most similar past contexts and combines them \citep{gao2024aligning}. LaMP shows retrieval from a user's own profile helps personalisation \citep{salemi2024lamp}. Both fit our finding that the raw earlier lists predict a held-out list better than any distilled rule set. In software engineering, faults cluster in time and place: a cache of recently fixed or changed files, about a tenth of a project, held 73--95\% of later faults \citep{kim2007predicting}. That is the pattern behind the developer's ``fixed, and back'' notes. Retrieval with ensembled forecasts approaches the human crowd in event forecasting \citep{halawi2024approaching}. Our forecasts were single runs.
+
+\paragraph{Playtesting.} LLM agents already test games for crashes and coverage \citep{zhao2025towards, wang2025leveraging}, and their scores correlate with the difficulty humans report \citep{xiao2024llms}. We found no work that predicts a player's own notes, which is what the rites do.
+
+\paragraph{Refinement and judging.} Refining a model's output with its own feedback gains most in the first one or two rounds \citep{madaan2023selfrefine}. The Second Rite's counts fell fastest in its first rounds too. Its shape is borrowed from input optimisation against a frozen network \citep{szegedy2014intriguing}: the model is held fixed and the input moves to reduce a loss. Using a model to grade a model's output is common practice \citep{zheng2023judging}. But a judge favours text from its own family \citep{panickssery2024llm}, and our forecaster and scorer are the same family. We used one fixed grader across all runs, so scores compare even though the grader may be biased.
 
 \section{Setting}
 \label{sec:setting}
