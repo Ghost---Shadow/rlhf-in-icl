@@ -1,0 +1,264 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Appeasing the Machine Spirit</title>
+<meta name="description" content="Two rites of RLHF in in-context learning: predicting a solo developer's playtest notes, and changing the todo so they never need writing.">
+<style>
+  :root {
+    --bg: #fbfaf7;
+    --fg: #1d1d1b;
+    --muted: #5d5a54;
+    --rule: #e2ded6;
+    --accent: #8a2c1f;
+    --code: #f1eee8;
+    --card: #ffffff;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #141413;
+      --fg: #ece9e2;
+      --muted: #a29e95;
+      --rule: #2e2d2a;
+      --accent: #e0846f;
+      --code: #1f1e1c;
+      --card: #1b1a18;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--fg);
+    font: 18px/1.65 Georgia, "Times New Roman", serif;
+  }
+  main { max-width: 42rem; margin: 0 auto; padding: 3rem 16px 5rem; }
+  header p.kicker {
+    font: 600 0.8rem/1 system-ui, sans-serif;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin: 0 0 0.8rem;
+  }
+  h1 { font-size: 2.2rem; line-height: 1.15; margin: 0 0 0.6rem; }
+  h2 { font-size: 1.35rem; margin: 2.4rem 0 0.6rem; }
+  .byline { color: var(--muted); font: 0.95rem/1.5 system-ui, sans-serif; margin: 0 0 1.6rem; }
+  .paper {
+    display: flex; gap: 0.8rem; flex-wrap: wrap; align-items: center;
+    border: 1px solid var(--rule); background: var(--card);
+    border-radius: 10px; padding: 0.9rem 1.1rem; margin: 1.6rem 0;
+    font: 0.95rem/1.4 system-ui, sans-serif;
+  }
+  .paper a.button {
+    background: var(--accent); color: var(--bg); text-decoration: none;
+    padding: 0.5rem 0.9rem; border-radius: 6px; font-weight: 600;
+  }
+  .paper a.button.ghost { background: transparent; color: var(--accent); border: 1px solid var(--accent); }
+  a { color: var(--accent); }
+  figure { margin: 1.8rem 0; }
+  figure img { width: 100%; height: auto; border: 1px solid var(--rule); border-radius: 6px; background: #fff; }
+  figcaption { color: var(--muted); font: 0.85rem/1.5 system-ui, sans-serif; margin-top: 0.5rem; }
+  blockquote {
+    margin: 1.4rem 0; padding: 0.2rem 0 0.2rem 1rem;
+    border-left: 3px solid var(--accent); color: var(--muted); font-style: italic;
+  }
+  table { width: 100%; border-collapse: collapse; font: 0.9rem/1.4 system-ui, sans-serif; margin: 1.2rem 0; }
+  th, td { text-align: left; padding: 0.45rem 0.5rem; border-bottom: 1px solid var(--rule); }
+  th { color: var(--muted); font-weight: 600; }
+  td.n { text-align: right; font-variant-numeric: tabular-nums; }
+  .table-wrap { overflow-x: auto; }
+  code { background: var(--code); padding: 0.1rem 0.3rem; border-radius: 4px; font-size: 0.85em; }
+  pre { background: var(--code); border: 1px solid var(--rule); border-radius: 8px; padding: 1rem 1.1rem; overflow-x: auto; margin: 1.4rem 0; }
+  pre code { background: none; padding: 0; font-size: 0.8rem; line-height: 1.55; white-space: pre; }
+  footer { margin-top: 3rem; color: var(--muted); font: 0.85rem/1.5 system-ui, sans-serif; border-top: 1px solid var(--rule); padding-top: 1rem; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <p class="kicker">RLHF in ICL</p>
+    <h1>Appeasing the Machine Spirit</h1>
+    <p class="byline">Souradeep Nanda, Unemployed Bum · November 2026</p>
+  </header>
+
+  <div class="paper">
+    <a class="button" href="appeasing-the-machine-spirit.pdf">Read the preprint (PDF)</a>
+    <a class="button ghost" href="https://github.com/Ghost---Shadow/rlhf-in-icl">Source on GitHub</a>
+    <span>Two rites for predicting, and then preventing, a solo developer's playtest notes.</span>
+  </div>
+
+  <p>I'm making a game alone: <em>The Good Vet</em>, an open-world vet game with soulslike fights. Every few days I play the latest build and write down everything that bothers me. Then the list goes back into the todo, the todo gets built, and I play again.</p>
+
+  <p>After a month there were sixteen of those lists in git, each one written against a todo. That's a dataset. So I asked an agent two questions. Can you read the todo and predict what I'll write? And if you can, can you change the todo so I don't have to write it?</p>
+
+  <h2>Two rites</h2>
+
+  <p>Nothing is fine-tuned. The "weights" are one markdown file in the agent's memory folder. The "dataset" is git tags pairing each todo with its list. Each epoch is a fresh agent, cleansed of all prior context. That's the <code>zero_grad()</code>, so the file is the only thing that carries over.</p>
+
+  <p><strong>The First Rite</strong> trains the memory. An agent reads the memory, forecasts each past list from its todo, opens the real list, writes down what it got wrong, and rewrites the memory.</p>
+
+  <p><strong>The Second Rite</strong> freezes the memory and changes the todo instead. It forecasts what I'll complain about once the todo is built, writes those complaints into the todo as fixes, and forecasts again, until nothing new comes up. It's like optimising the input against a frozen network.</p>
+
+  <p>If both rites work, my next playtest list comes back empty, and the machine spirit is appeased.</p>
+
+  <pre><code><b>The First Rite</b>: train the memory on past (todo, list) pairs
+  for each epoch:
+    agent = fresh agent                      # zero_grad()
+    for each past pair, in order:
+      forecast = agent.predict(memory, todo, earlier lists)   # before the list is opened
+      loss     = agent.compare(forecast, real list)          # a count, and what went wrong
+    memory = agent.rewrite(memory, patterns in the losses)  # do/don't rules, no past notes
+    commit memory                            # checkpoint
+    stop when held-out hits stop rising
+
+<b>The Second Rite</b>: freeze the memory, converge the todo
+  repeat:
+    agent    = fresh agent
+    forecast = agent.predict(memory, todo, every past list) # as if the todo were built
+    new      = lines the todo doesn't cover yet              # the loss
+    todo     = fold(todo, new)               # boxes, watch lines, decisions
+    commit todo
+  until new is (almost) empty</code></pre>
+
+  <h2>The curve that lied</h2>
+
+  <figure>
+    <img src="accuracy.png" alt="Two charts. Left: training accuracy rises from 5.5% to 21% over four epochs, but with recall removed it stays flat near 7%. Right: held-out accuracy stays near 3%, far below a dashed line at 15% for an agent reading the raw earlier lists.">
+    <figcaption>Left: training rose, but with recall removed it was flat from epoch 2. Right: on three lists the memory never saw, a rules memory caught about 3%, while an agent reading the raw earlier lists caught 15%.</figcaption>
+  </figure>
+
+  <p>Training accuracy went from 5.5% of my notes to 21% in four epochs, which looked great. Then the scorer pointed out that many hits repeated my notes almost word for word. Each epoch, the agent had written my past notes into the memory: offender lists, per-tool wish lists. By epoch four, about 81 of its 119 hits were recall. With that removed, the curve was flat from epoch two.</p>
+
+  <blockquote>"This is cheating. You can't just write out the diff in the memory itself."</blockquote>
+
+  <p>So we held out my last three lists and trained a fresh memory on the rest. On the lists it had never seen, it caught 4, 5 and 6 notes out of 191: about 3%. An agent with no rules memory at all, reading my earlier lists raw, caught 29. Five times better.</p>
+
+  <h2>What actually predicts me</h2>
+
+  <p>Most of my notes are repeats of named things, half-finished asks, or the next step of a wish I already made. Those live in the raw history, not in rules about the history. A rule like "fixes checked only by a test come back" is true, but it doesn't say <em>which</em> thing will come back.</p>
+
+  <p>So the memory was rewritten as general do/don't pairs, each rule with its opposite, with none of my past notes in it. Frozen and tested, it caught 5.7% with zero recall, and twice the held-out score of the trained rules. Most of its misses were rules it already had but no room to write, because I'd capped it at twelve lines. A predicted problem I don't mention costs nothing. It could be an oversight on my part.</p>
+
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>Run</th><th class="n">Training (564 notes)</th><th class="n">Held out (191)</th></tr></thead>
+    <tbody>
+      <tr><td>First Rite, epoch 4, all hits</td><td class="n">119</td><td class="n">n/a</td></tr>
+      <tr><td>First Rite, epoch 4, recall removed</td><td class="n">~38</td><td class="n">n/a</td></tr>
+      <tr><td>Validation, rules trained on the rest</td><td class="n">n/a</td><td class="n">4 to 6</td></tr>
+      <tr><td>Raw earlier lists, no rules memory</td><td class="n">63</td><td class="n">29</td></tr>
+      <tr><td>Do/don't memory, frozen</td><td class="n">32</td><td class="n">10</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <h2>Against the baselines</h2>
+
+  <p>The fair test is the three lists the memory never saw (191 notes). Two baselines don't use the First Rite at all. One gets no memory and no past lists. The other gets every earlier list raw and no memory.</p>
+
+  <figure>
+    <img src="rite1-baselines.png" alt="Horizontal bar chart of held-out notes caught. No memory and no past lists: 4 of 191, 2.1%, the baseline. First Rite rules memory: 6, 3.1%, 1.5 times the baseline. First Rite do/don't memory with the last three lists: 10, 5.2%, 2.5 times. Every earlier list raw with no memory: 29, 15.2%, 7.2 times.">
+    <figcaption>Grey bars are baselines without the First Rite; blue bars use it. Percentages are held-out notes caught outright.</figcaption>
+  </figure>
+
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>Held out, 191 notes</th><th class="n">Caught</th><th class="n">vs the no-memory baseline</th></tr></thead>
+    <tbody>
+      <tr><td>Baseline: no memory, no past lists</td><td class="n">4 (2.1%)</td><td class="n">1.0x</td></tr>
+      <tr><td>First Rite: rules memory, trained 3 epochs</td><td class="n">6 (3.1%)</td><td class="n">1.5x (+50%)</td></tr>
+      <tr><td>First Rite: do/don't memory + last 3 lists</td><td class="n">10 (5.2%)</td><td class="n">2.5x (+150%)</td></tr>
+      <tr><td>Baseline: every earlier list raw, no memory</td><td class="n">29 (15.2%)</td><td class="n">7.2x (+625%)</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <p>So the First Rite beats having nothing, by 50% with trained rules and by 150% with the do/don't memory. But it doesn't beat simply reading my old lists, which is 2.9 times better than the do/don't memory on its own. That's why the memory now says to read every earlier list raw, and spends its rules on how to read them. That combination (the do/don't memory plus every earlier list, with no cap on lines) was then tested on my next playtest, a list nothing had seen. It caught 21 of my 112 notes (18.8%), the best yet. It took 176 lines to do it, so only about one line in nine hit.</p>
+
+  <h2>Turning the forecast into work</h2>
+
+  <p>The Second Rite took the frozen memory, today's todo and all sixteen lists, and forecast 176 notes for my next playtest. Twenty-two turned out to be already handled in the code. The rest became 64 fix boxes, 35 warnings on existing boxes, and 9 decisions with defaults. Every box says how it gets checked without me playing.</p>
+
+  <p>Then the rite ran again on the new todo, with a fresh agent each round, for five rounds. The baseline is not running it: the todo stays as it was, and the forecast's 176 issues stay in the build.</p>
+
+  <figure>
+    <img src="rite2-rounds.png" alt="Bar chart of new forecast issues per round against a dashed baseline at 176. Round 0: 176, the baseline forecast. Round 1: 79, 55% below. Round 2: 44, 75% below. Round 3: 28, 84% below. Round 4: 22, of which 12 came from the last round's own fixes, 93% below on its own fixes. Round 5: 32, of which 10 from its own fixes, 94% below on its own fixes.">
+    <figcaption>Blue is what each round found in the last round's fixes. Orange is what it found in a source it read for the first time (my chapter docs). The dashed line is the baseline: no Second Rite.</figcaption>
+  </figure>
+
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>Round</th><th class="n">New issues found</th><th class="n">From the last round's fixes</th><th class="n">vs the 176 baseline</th></tr></thead>
+    <tbody>
+      <tr><td>0 (the baseline forecast)</td><td class="n">176</td><td class="n">n/a</td><td class="n">n/a</td></tr>
+      <tr><td>1</td><td class="n">79</td><td class="n">79</td><td class="n">55% fewer</td></tr>
+      <tr><td>2</td><td class="n">44</td><td class="n">44</td><td class="n">75% fewer</td></tr>
+      <tr><td>3</td><td class="n">28</td><td class="n">28</td><td class="n">84% fewer</td></tr>
+      <tr><td>4</td><td class="n">22</td><td class="n">12</td><td class="n">88% fewer (93% on its own fixes)</td></tr>
+      <tr><td>5</td><td class="n">32</td><td class="n">10</td><td class="n">82% fewer (94% on its own fixes)</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <p>Most of each round's finds were faults in the last round's fixes, which is what you'd expect: every fix adds a little surface. On that surface alone it converged, from 79 to 10. The bump at the end came from the agent finally reading my chapter docs, which list the parts I hadn't tested. A new source behaves like new data. Next time, round zero gets every source at once.</p>
+
+  <p>One caveat matters. These are issues a forecaster <em>expects</em> me to find, not issues I found. "94% fewer" means the frozen memory can't think of much more to complain about. Whether I can is the next playtest. What's left is what only playing can find: how it feels, the prices, the numbers, and a real friend on a real connection.</p>
+
+  <p>The real test is my next playtest. If the list is short, the spirit is appeased. If it isn't, the list becomes pair seventeen, and the First Rite begins again.</p>
+
+  <h2>Which parts actually matter?</h2>
+
+  <p>Then I asked which pieces earn their keep. Seven fresh agents forecast the same build, each with one thing changed: no memory, no past lists, a 12-line cap, a script-built shortlist of likely comebacks, a memory whose rules keep helped and misled scores, and the original recipe run twice. The same scorer graded them all against my real list.</p>
+
+  <figure>
+    <img src="ablation.png" alt="Bar chart of notes caught from list 17, out of 112. The recipe: 21 and, on a rerun, 14. No memory: 20. No past lists: 19. 12-line cap: 6, but 33% of its lines hit. Comeback shortlist: 16. Counted memory: 13. Union of three runs: 23. A shaded band from 14 to 21 marks the noise between the recipe's two runs.">
+    <figcaption>The shaded band is the gap between two runs of the same recipe. Everything but the cap lands inside it, and only pooling runs gets above it.</figcaption>
+  </figure>
+
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>Variant</th><th class="n">Notes caught /112</th><th class="n">Lines that hit</th></tr></thead>
+    <tbody>
+      <tr><td>The recipe</td><td class="n">21</td><td class="n">11%</td></tr>
+      <tr><td>The recipe, run again</td><td class="n">14</td><td class="n">10%</td></tr>
+      <tr><td>No memory</td><td class="n">20</td><td class="n">9%</td></tr>
+      <tr><td>No past lists</td><td class="n">19</td><td class="n">11%</td></tr>
+      <tr><td>12-line cap</td><td class="n">6</td><td class="n">33%</td></tr>
+      <tr><td>+ comeback shortlist</td><td class="n">16</td><td class="n">11%</td></tr>
+      <tr><td>Counted memory</td><td class="n">13</td><td class="n">10%</td></tr>
+      <tr><td>Three runs pooled</td><td class="n">23</td><td class="n">~9%</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <p>The humbling part: the same recipe, run twice, scored 21 and 14. That gap is bigger than the effect of anything I removed or added. Taking away the memory or my old lists barely moved the number, because the todo already says most of what's worth predicting: what was built, what was fixed only by a test, what's waiting on me. The shortlist and the scored memory didn't beat the noise either.</p>
+
+  <p>Two things did stand out. Capping at 12 lines catches far fewer notes, but a third of its lines hit, three times the rest. That's useful when every line turns into work. And pooling three runs caught 23, the most of anything, because each run misses different things. The lesson is the oldest one in machine learning: measure your noise before you believe your gains.</p>
+
+  <h2>Others who've walked this road</h2>
+
+  <p>None of this is new in isolation, and the closest work explains some of what we saw.</p>
+
+  <ul>
+    <li><a href="https://arxiv.org/abs/2510.04618">ACE</a> keeps an agent's context as a playbook of small bullets, each with helpful and harmful counts, changed only by small edits. It names what went wrong in our First Rite: rewriting the whole context each time collapses it. In their case it shrank from 18,282 tokens to 122, and scored below having no memory at all.</li>
+    <li><a href="https://arxiv.org/abs/2308.10144">ExpeL</a> and <a href="https://arxiv.org/abs/2504.07952">Dynamic Cheatsheet</a> pair a curated list of insights with recalling whole past examples. That's the mix our held-out test pointed to.</li>
+    <li><a href="https://arxiv.org/abs/2507.19457">GEPA</a> evolves prompts by reflection, and keeps several good ones instead of a single best.</li>
+    <li><a href="https://arxiv.org/abs/2404.15269">CIPHER</a> learns a user's preferences from their edits, and retrieves the ones from the most similar past situations. That's my notes, almost exactly.</li>
+    <li><a href="https://www.st.cs.uni-saarland.de/edu/softmine2007/Papers/kim-icse-2007.pdf">FixCache</a>, from 2007, found that bugs cluster: a cache of recently fixed files, a tenth of a project, held most of its later bugs. That's my "fixed, and back" notes in one sentence.</li>
+    <li>LLM playtesters already exist (<a href="https://arxiv.org/abs/2507.09490">Lap</a>, <a href="https://arxiv.org/abs/2509.22170">TITAN</a>), but they hunt crashes and coverage. I found nothing that predicts a player's own notes.</li>
+    <li>One warning: a judge model <a href="https://arxiv.org/abs/2404.13076">favours text from its own family</a>, and my forecaster and scorer are both Claude.</li>
+  </ul>
+
+  <p>The full list, with what each one means for the rites, is in the <a href="appeasing-the-machine-spirit.pdf">preprint</a>.</p>
+
+  <h2>What I'd tell you</h2>
+
+  <p>Measure recall, or your curve will lie. Keep the labels out of the weights. Give the model the raw history, and spend the memory on how to read it. And a fresh agent per epoch is expensive, because onboarding is costly, just like real life.</p>
+
+  <footer>
+    The method, the numbers and the prompts are in the <a href="appeasing-the-machine-spirit.pdf">preprint</a>. The LaTeX source, this page and the CI that builds both are on <a href="https://github.com/Ghost---Shadow/rlhf-in-icl">GitHub</a>. The experiments were run by Claude Opus 5.5 agents in Claude Code. MIT licence.
+  </footer>
+</main>
+</body>
+</html>
