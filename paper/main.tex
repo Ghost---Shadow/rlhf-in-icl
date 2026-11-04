@@ -23,7 +23,7 @@
 \maketitle
 
 \begin{abstract}
-A solo developer of an open-world soulslike game plays each new build and writes a list of notes. We ask whether a language-model agent can predict that list from the todo the build was made from, and then change the todo so the list comes back empty. We frame both as learning with no weight updates. The ``weights'' are one plain-text memory file, the data are sixteen git-tagged pairs of todo and playtest list, and every epoch is run by a fresh agent, so the file is the only thing carried forward. The \emph{First Rite} trains the memory on past pairs; the \emph{Second Rite} freezes it and optimises the todo against it, as one would optimise an input against a frozen network. On the training pairs, accuracy rose from 5.5\% to 21.1\% of notes caught over four epochs. But a fixed scorer found that most of the gain was recall: the memory had stored the labels. With recall removed the curve was flat from epoch~2, and a held-out track converged near 3\%. Reading the raw earlier lists predicted held-out notes five times better than any distilled rule set. A memory rewritten as general do/don't pairs, with no past notes in it, caught 5.7\% with zero recall, and its misses point to a line budget, not missing knowledge. Against a baseline with no memory, that is 2.5 times as many held-out notes; against a baseline that only reads the raw history, it is 2.9 times fewer. The Second Rite cut the forecast issues left in the todo from 176 to 32 over five rounds (82\% fewer, and 94\% fewer on its own fixes), though only a real playtest can say whether the real list shrinks too. On the first list no part of the pipeline had seen, the forecast the memory prescribes caught 21 of 112 notes (18.8\%), the best share yet. We report the protocol, the leaks we found, and what transfers.
+A solo developer of an open-world soulslike game plays each new build and writes a list of notes. We ask whether a language-model agent can predict that list from the todo the build was made from, and then change the todo so the list comes back empty. We frame both as learning with no weight updates. The ``weights'' are one plain-text memory file, the data are sixteen git-tagged pairs of todo and playtest list, and every epoch is run by a fresh agent, so the file is the only thing carried forward. The \emph{First Rite} trains the memory on past pairs; the \emph{Second Rite} freezes it and optimises the todo against it, as one would optimise an input against a frozen network. On the training pairs, accuracy rose from 5.5\% to 21.1\% of notes caught over four epochs. But a fixed scorer found that most of the gain was recall: the memory had stored the labels. With recall removed the curve was flat from epoch~2, and a held-out track converged near 3\%. Reading the raw earlier lists predicted held-out notes five times better than any distilled rule set. A memory rewritten as general do/don't pairs, with no past notes in it, caught 5.7\% with zero recall, and its misses point to a line budget, not missing knowledge. Against a baseline with no memory, that is 2.5 times as many held-out notes; against a baseline that only reads the raw history, it is 2.9 times fewer. The Second Rite cut the forecast issues left in the todo from 176 to 32 over five rounds (82\% fewer, and 94\% fewer on its own fixes), though only a real playtest can say whether the real list shrinks too. On the first list no part of the pipeline had seen, the forecast the memory prescribes caught 21 of 112 notes (18.8\%), the best share yet. An ablation on that list found run-to-run noise as large as every component's effect: the recipe scored 21 and then 14 on the same inputs, and only pooling several runs raised recall. We report the protocol, the leaks we found, and what transfers.
 \end{abstract}
 
 \section{Introduction}
@@ -237,6 +237,47 @@ The baseline here is not running the rite: the todo stays as it was, and all 176
 
 \paragraph{The first unseen list.} The developer then played the build that round~0 forecast, with section 72 still unbuilt, and wrote list 17: 112 notes. It is the first list no part of the pipeline had seen. Round~0's forecast used what the memory prescribes, the do/don't rules plus every earlier list with no cap on lines. It caught 21 of the 112 notes (18.8\%), with zero recall. That is the best share yet on an unseen list, above the 15.2\% that raw history reached on lists 14--16, though the lists differ. It took 176 lines, of which 20 hit (11\%). Rounds 1--5, which forecast fixes that weren't built, added 2 more notes. Of the list's 8 repeats of old notes, round~0 caught 3; of its 61 wishes and design asks, 14; of its 51 reports of something broken, 7.
 
+\paragraph{Ablation on list 17.} Which parts of the recipe earn their place? We reran pair 17 with one change at a time, every variant in context only. Each was a fresh Claude Opus 5.5 agent sealed to a folder holding only its inputs, and the same scorer graded all of them (Table~\ref{tab:ablation}, Figure~\ref{fig:ablation}). Every variant forecast from the todo round~0 used, from before section 72. The todo the build was played against already held section 72, which is round~0's forecast folded into boxes, so it would have handed a forecaster the answers.
+
+\begin{table}[t]
+  \caption{Ablation on list 17 (112 notes), one fixed scorer, strict rubric. Each variant changes one thing from the recipe (the do/don't memory plus every earlier list, no cap). Precision is lines with a full hit over all lines. Recall was zero everywhere.}
+  \label{tab:ablation}
+  \centering
+  \small
+  \begin{tabular}{@{}llrrr@{}}
+    \toprule
+    ID & Variant & Notes caught & Precision & Repeats /8 \\
+    \midrule
+    V0a & The recipe (round~0) & 21 (18.8\%) & 20/176 (11\%) & 3 \\
+    V0b & The recipe, rerun fresh & 14 (12.5\%) & 13/127 (10\%) & 3 \\
+    V1 & No memory & 20 (17.9\%) & 18/206 (9\%) & 3 \\
+    V2 & No past lists & 19 (17.0\%) & 17/148 (11\%) & 4 \\
+    V3 & A 12-line cap & 6 (5.4\%) & 4/12 (33\%) & 1 \\
+    V4 & Plus a retrieval-first shortlist & 16 (14.3\%) & 17/152 (11\%) & 3 \\
+    V5 & A counted memory & 13 (11.6\%) & 11/106 (10\%) & 4 \\
+    V6 & Union of V0a, V0b and V4 & 23 (20.5\%) & $\sim$22/235 ($\sim$9\%) & 3 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\linewidth]{figures/ablation.png}
+  \caption{Ablation on list 17. The shaded band spans the recipe's two runs, 14 to 21 notes: run-to-run noise. Every single change lands inside it except the cap, which trades notes for precision. Pooling three runs (orange) is the only variant above the band.}
+  \label{fig:ablation}
+\end{figure}
+
+What it showed:
+\begin{itemize}[leftmargin=*]
+  \item \textbf{Noise is as big as every effect.} The same recipe scored 21 and then 14. With 112 notes, one standard error at this rate is about four notes. No memory (20), no past lists (19), the shortlist (16) and the counted memory (13) all fall inside the recipe's band, so on one list none can be called better or worse.
+  \item \textbf{The todo carries most of what can be forecast.} Removing the memory or the past lists barely moved recall: the todo already says what was built, what was fixed only by a test, and what waits on the developer. This qualifies the held-out result above, where raw lists beat a rules-only memory. That compared two weak setups on other lists.
+  \item \textbf{Retrieval-first didn't catch more repeats here.} The shortlist script (FixCache-style recency and repeat counts \citep{kim2007predicting}, with an inverse-frequency weight) fed 89 of V4's 152 lines, but V4 caught 3 of 8 repeats, the same as the recipe. Its extraction was crude: generic words ranked high, and the repeats were mostly already in the todo.
+  \item \textbf{The counted memory ranked its rules sensibly but didn't add notes.} After a walk over pairs 02--16 with ExpeL- and ACE-style operations \citep{zhao2024expel, zhang2026ace}, its top rule was ``things fixed but never played come back'' (18 helped, 1 misled). It tied for the most repeats caught, 4 of 8, but caught 13 notes in all.
+  \item \textbf{The cap is the one clear effect, and it is a trade.} Twelve lines caught 6 notes at 33\% precision, three times the uncapped runs. In the Second Rite every line becomes work, so precision matters there. A forecast meant to catch oversights wants recall.
+  \item \textbf{Pooling runs raises recall.} The union of three runs caught 23, the most of any variant, because each run misses different notes. That is the ensembling effect seen in forecasting \citep{halawi2024approaching}. Notes caught by at least two runs (16) were no better than a single run.
+\end{itemize}
+One note, the llama's graze, may have leaked to the reruns through a recent commit subject in the agents' start-up context. Every variant caught it, and it also appears in list 16. Dropping it takes one from every row and changes no conclusion. The ablation cost about 1.1M tokens, with no GPU or engine.
+
 \section{Discussion}
 
 \paragraph{Leaks are easy to make and hard to see.} We found five during the work:
@@ -253,20 +294,22 @@ Only the last one moved the headline number much, and only a scorer asked to loo
 
 \paragraph{Onboarding cost.} A fresh agent per epoch is what keeps an epoch blind, and it's also expensive: each one reads about 200k tokens of todos and lists before it writes a line. We kept agent count low and gave each a whole epoch end to end. The developer's framing: ``Just like real life, onboarding is costly.''
 
-\paragraph{Future work.} The survey behind Section~2 points to five changes, in order of expected value:
+\paragraph{Future work.} The ablation reorders what the survey behind Section~2 suggested:
 \begin{itemize}[leftmargin=*]
-  \item \textbf{Retrieval first.} Before the model writes, code builds candidates from the history: every thing named in a past note, weighted by recency and repeat count \citep{kim2007predicting, salemi2024lamp}, matched against what the new todo touches, with the most similar past contexts retrieved as in CIPHER and Dynamic Cheatsheet \citep{gao2024aligning, suzgun2026dynamic}. It targets the repeats, of which list 17's forecast missed five of eight.
-  \item \textbf{A counted memory.} Itemised do/don't bullets with helpful and harmful counts, changed only by small edits \citep{zhang2026ace, zhao2024expel}. Rules that never pay get pruned by their counts, not by judgement.
-  \item \textbf{Ensembles.} Several independent forecasts, combined as in event forecasting \citep{halawi2024approaching}: lines that two agree on as the precise list, and the union as the broad one. It targets the 11\% hit rate per line.
-  \item \textbf{A judge from another family,} or a hand-checked sample, to calibrate the scorer \citep{panickssery2024llm}.
-  \item \textbf{A population of memories,} kept on a Pareto front across pairs as in GEPA \citep{agrawal2026gepa}, if one memory plateaus.
+  \item \textbf{Measure noise before anything else.} Every comparison should run each variant at least twice, on more than one list. On list 17 a single rerun moved the score by seven notes.
+  \item \textbf{Ensembles,} combined as in event forecasting \citep{halawi2024approaching}. Pooling three runs was the only change that raised recall. It costs tokens and nothing else.
+  \item \textbf{Two lists from one forecast.} A capped ``sure'' list for the Second Rite, where every line becomes work, and an uncapped one for catching oversights.
+  \item \textbf{Retrieval first, with better extraction.} The shortlist didn't help on list 17, but its script was crude. The ideas behind it (recency and repeat counts \citep{kim2007predicting, salemi2024lamp}, and retrieval of the most similar past contexts \citep{gao2024aligning, suzgun2026dynamic}) deserve a retest that extracts named things only.
+  \item \textbf{A counted memory} \citep{zhang2026ace, zhao2024expel}, retested on list 18. Its counts already rank rules by evidence, which is useful for pruning even where it adds no notes.
+  \item \textbf{A judge from another family,} or the hand-checked sample the ablation produced, to calibrate the scorer \citep{panickssery2024llm}.
+  \item \textbf{A population of memories} on a Pareto front, as in GEPA \citep{agrawal2026gepa}, only if a single memory plateaus once noise is measured.
 \end{itemize}
 
-\paragraph{Limitations.} One developer, one game, seventeen lists. The forecaster and the scorer are the same model family, and the scorer's recall estimate is a judgement call. Much of the training data was seen while the first memory was written, so every in-sample number is optimistic. The held-out set is three lists, plus list 17. The Second Rite's later rounds were never played, so only round~0 has a real-world score.
+\paragraph{Limitations.} One developer, one game, seventeen lists. The forecaster and the scorer are the same model family, and the scorer's recall estimate is a judgement call. Much of the training data was seen while the first memory was written, so every in-sample number is optimistic. The held-out set is three lists, plus list 17. The Second Rite's later rounds were never played, so only round~0 has a real-world score. Above all, single runs are noisy: the recipe scored 21 and 14 on the same inputs, so every one-run comparison in this paper carries an error of several notes.
 
 \section{Conclusion}
 
-The First Rite can be run as training, but its curve lies unless recall is measured. Once the labels are kept out of the memory, what remains is a modest, honest prior plus a strong reliance on raw history. The Second Rite turns that prior into work. On the first list no part of the pipeline had seen, the prescribed forecast caught 18.8\% of the developer's notes outright. Whether the machine spirit is appeased will be known when a build of the converged todo is played.
+The First Rite can be run as training, but its curve lies unless recall is measured. Once the labels are kept out of the memory, what remains is a modest, honest prior plus a strong reliance on raw history. The Second Rite turns that prior into work. On the first list no part of the pipeline had seen, the prescribed forecast caught 18.8\% of the developer's notes outright. An ablation then showed how noisy one run is, and that pooling runs is the surest way to catch more. Whether the machine spirit is appeased will be known when a build of the converged todo is played.
 
 \paragraph{Acknowledgements.} The experiments were run by Claude Opus 5.5 agents in Claude Code. The developer supplied every playtest note and every correction to the method.
 
